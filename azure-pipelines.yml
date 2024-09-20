@@ -1,0 +1,46 @@
+trigger:
+  branches:
+    include:
+      - main  # Cambia 'main' por la rama principal de tu repositorio
+
+pool:
+  vmImage: 'ubuntu-latest' 
+
+steps:
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.x'
+    addToPath: true
+  displayName: 'Instalar Python'
+
+- task: UseNode@1
+  inputs:
+    versionSpec: '14.x'
+  displayName: 'Instalar Node.js'
+
+- script: |
+    curl -sS https://getcomposer.org/installer | php
+    mv composer.phar /usr/local/bin/composer
+  displayName: 'Instalar Composer'
+
+- script: |
+    composer install --prefer-dist --no-ansi --no-interaction --no-progress --no-scripts --no-autoloader
+    composer dump-autoload --optimize
+  displayName: 'Instalar dependencias de PHP'
+
+- script: |
+    npm install
+    npm run prod
+  displayName: 'Instalar y compilar dependencias de frontend' 
+
+- script: |
+    php artisan migrate --env=testing
+    ./vendor/bin/phpunit
+  displayName: 'Ejecutar pruebas'
+
+- task: PublishTestResults@2
+  inputs:
+    testResultsFiles: '**/TEST-*.xml'
+    testRunTitle: 'Pruebas Unitarias'
+  condition: succeededOrFailed()
+  displayName: 'Publicar resultados de pruebas'
